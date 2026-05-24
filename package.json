@@ -1,0 +1,329 @@
+{
+  "name": "vscode-mistral-vibe",
+  "displayName": "Mistral Vibe",
+  "description": "Mistral AI and Vibe CLI workflows inside VS Code.",
+  "version": "0.1.0",
+  "publisher": "coolmanyt",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=18.0.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:mistralVibe.openChat",
+    "onCommand:mistralVibe.openVibe",
+    "onCommand:mistralVibe.openMistral",
+    "onCommand:mistralVibe.openSetup",
+    "onCommand:mistralVibe.openHistory",
+    "onCommand:mistralVibe.ask",
+    "onCommand:mistralVibe.inlineChat",
+    "onCommand:mistralVibe.explainSelection",
+    "onCommand:mistralVibe.generateCode",
+    "onCommand:mistralVibe.runVibeCommand",
+    "onCommand:mistralVibe.installVibe",
+    "onCommand:mistralVibe.selectModel",
+    "onCommand:mistralVibe.editSystemInstructions",
+    "onCommand:mistralVibe.configureVibeShellPath",
+    "onChatParticipant:vscode-mistral-vibe.mistral",
+    "onCommand:mistralVibe.setApiKey",
+    "onCommand:mistralVibe.addMistralApiKey",
+    "onCommand:mistralVibe.addVibeApiKey",
+    "onCommand:mistralVibe.selectMistralApiKey",
+    "onCommand:mistralVibe.selectVibeApiKey",
+    "onCommand:mistralVibe.deleteApiKey",
+    "onCommand:mistralVibe.validateConnection",
+    "onView:mistralVibe.history"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.5"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "mistralVibe.openMistral",
+        "title": "Open Mistral",
+        "category": "Mistral Vibe",
+        "icon": {
+          "light": "resources/mistral-vibe.svg",
+          "dark": "resources/mistral-vibe.svg"
+        }
+      },
+      {
+        "command": "mistralVibe.openChat",
+        "title": "Open Chat",
+        "category": "Mistral Vibe",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "mistralVibe.openVibe",
+        "title": "Open Vibe",
+        "category": "Mistral Vibe",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "mistralVibe.openSetup",
+        "title": "Open Initial Setup",
+        "category": "Mistral Vibe",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "mistralVibe.ask",
+        "title": "Ask Mistral",
+        "category": "Mistral Vibe",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "mistralVibe.inlineChat",
+        "title": "Inline Chat",
+        "category": "Mistral Vibe",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "mistralVibe.explainSelection",
+        "title": "Explain Selection",
+        "category": "Mistral Vibe",
+        "icon": "$(symbol-method)"
+      },
+      {
+        "command": "mistralVibe.generateCode",
+        "title": "Generate Code",
+        "category": "Mistral Vibe",
+        "icon": "$(code)"
+      },
+      {
+        "command": "mistralVibe.runVibeCommand",
+        "title": "Run Vibe CLI Command",
+        "category": "Mistral Vibe",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "mistralVibe.installVibe",
+        "title": "Install Vibe CLI",
+        "category": "Mistral Vibe",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "mistralVibe.selectModel",
+        "title": "Select Model",
+        "category": "Mistral Vibe",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "mistralVibe.editSystemInstructions",
+        "title": "View System Prompt",
+        "category": "Mistral Vibe",
+        "icon": "$(book)"
+      },
+      {
+        "command": "mistralVibe.configureVibeShellPath",
+        "title": "Configure Vibe Shell Path",
+        "category": "Mistral Vibe",
+        "icon": "$(terminal-bash)"
+      },
+      {
+        "command": "mistralVibe.addMistralApiKey",
+        "title": "Add Mistral API Key",
+        "category": "Mistral Vibe",
+        "icon": "$(key)"
+      },
+      {
+        "command": "mistralVibe.addVibeApiKey",
+        "title": "Add Vibe API Key",
+        "category": "Mistral Vibe",
+        "icon": "$(key)"
+      },
+      {
+        "command": "mistralVibe.selectMistralApiKey",
+        "title": "Select Mistral API Key",
+        "category": "Mistral Vibe",
+        "icon": "$(account)"
+      },
+      {
+        "command": "mistralVibe.selectVibeApiKey",
+        "title": "Select Vibe API Key",
+        "category": "Mistral Vibe",
+        "icon": "$(account)"
+      },
+      {
+        "command": "mistralVibe.deleteApiKey",
+        "title": "Delete Saved API Key",
+        "category": "Mistral Vibe",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "mistralVibe.validateConnection",
+        "title": "Validate Connection",
+        "category": "Mistral Vibe",
+        "icon": "$(plug)"
+      }
+    ],
+    "configuration": {
+      "title": "Mistral Vibe",
+      "properties": {
+        "mistralVibe.endpoint": {
+          "type": "string",
+          "default": "https://api.mistral.ai/v1",
+          "description": "Mistral-compatible API endpoint. Supports Mistral cloud or self-hosted endpoints."
+        },
+        "mistralVibe.model": {
+          "type": "string",
+          "default": "mistral-small-latest",
+          "description": "Default Mistral chat model."
+        },
+        "mistralVibe.availableModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "mistral-small-latest",
+            "mistral-medium-latest",
+            "mistral-large-latest",
+            "codestral-latest"
+          ],
+          "description": "Models shown in the model quick pick."
+        },
+        "mistralVibe.vibeExecutable": {
+          "type": "string",
+          "default": "vibe",
+          "description": "Vibe CLI executable name or absolute path."
+        },
+        "mistralVibe.vibeShellPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional Bash/Git Bash executable path used for Vibe terminal sessions. Leave empty to auto-detect."
+        },
+        "mistralVibe.maxContextFiles": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Maximum number of open workspace files to include as lightweight chat context."
+        },
+        "mistralVibe.contextMode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "selection",
+            "currentFile",
+            "openEditors",
+            "workspace",
+            "selectedFiles"
+          ],
+          "default": "currentFile",
+          "description": "Default context scope for Mistral chat requests."
+        },
+        "mistralVibe.codeSuggestions.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable inline code suggestions. Disabled by default to avoid background API calls."
+        },
+        "mistralVibe.codeSuggestions.model": {
+          "type": "string",
+          "default": "devstral-2",
+          "description": "Model used for inline code suggestions."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mistralVibe",
+          "title": "Mistral Vibe",
+          "icon": "resources/mistral-vibe.svg"
+        }
+      ]
+    },
+    "views": {
+      "mistralVibe": [
+        {
+          "id": "mistralVibe.actions",
+          "name": "Actions",
+          "icon": "$(sparkle)"
+        },
+        {
+          "id": "mistralVibe.history",
+          "name": "Chat History",
+          "icon": "$(history)"
+        }
+      ]
+    },
+    "chatParticipants": [
+      {
+        "id": "vscode-mistral-vibe.mistral",
+        "fullName": "Mistral",
+        "name": "mistral",
+        "description": "Chat with Mistral using vscode-mistral-vibe",
+        "isSticky": true
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mistralVibe.openMistral",
+          "group": "navigation@90"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "mistralVibe.inlineChat",
+          "when": "editorHasSelection && mistralVibe.workspaceTrusted",
+          "group": "navigation@49"
+        },
+        {
+          "command": "mistralVibe.explainSelection",
+          "when": "editorHasSelection && mistralVibe.workspaceTrusted",
+          "group": "navigation@50"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mistralVibe.openMistral"
+        },
+        {
+          "command": "mistralVibe.openChat"
+        },
+        {
+          "command": "mistralVibe.openVibe"
+        },
+        {
+          "command": "mistralVibe.openSetup"
+        },
+        {
+          "command": "mistralVibe.ask",
+          "when": "mistralVibe.workspaceTrusted"
+        },
+        {
+          "command": "mistralVibe.inlineChat",
+          "when": "mistralVibe.workspaceTrusted"
+        },
+        {
+          "command": "mistralVibe.generateCode",
+          "when": "mistralVibe.workspaceTrusted"
+        },
+        {
+          "command": "mistralVibe.runVibeCommand",
+          "when": "mistralVibe.workspaceTrusted"
+        },
+        {
+          "command": "mistralVibe.installVibe"
+        },
+        {
+          "command": "mistralVibe.configureVibeShellPath"
+        }
+      ]
+    }
+  }
+}
