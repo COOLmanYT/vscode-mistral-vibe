@@ -50,6 +50,7 @@ export class ChatPanel {
   private vibeMessages: ChatMessage[] = [];
   private contextMode: ContextMode = getContextMode();
   private selectedContextFiles: string[] = [];
+  private selectedModel: string = getModel();
   private vibeCommands: VibeCommand[] = [];
 
   private constructor(
@@ -124,11 +125,11 @@ export class ChatPanel {
 
     const startedAt = Date.now();
     try {
-      const response = await this.deps.client.chat(requestMessages);
+      const response = await this.deps.client.chat(requestMessages, this.selectedModel);
       const elapsedMs = Date.now() - startedAt;
       const outputTokens = estimateTokens(response);
       this.messages.push(this.createMessage('assistant', response, {
-        model: getModel(),
+        model: this.selectedModel,
         elapsedMs,
         inputTokens: estimateTokens(requestMessages.map(message => message.content).join('\n')),
         outputTokens,
@@ -177,7 +178,9 @@ export class ChatPanel {
           return;
         case 'selectModel':
           if (message.value) {
-            await vscode.workspace.getConfiguration('mistralVibe').update('model', message.value, vscode.ConfigurationTarget.Global);
+            this.selectedModel = message.value;
+            const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+            await vscode.workspace.getConfiguration('mistralVibe').update('model', message.value, target);
             await this.postState();
           }
           return;
@@ -206,11 +209,16 @@ export class ChatPanel {
         case 'selectContextMode':
           if (message.contextMode) {
             this.contextMode = message.contextMode;
-            await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', message.contextMode, vscode.ConfigurationTarget.Workspace);
+            const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+            await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', message.contextMode, target);
             await this.postState();
           }
           return;
         case 'pickContextFiles':
+          await this.pickContextFiles();
+          await this.postState();
+          return;
+        case 'pickContextFilesNative':
           await this.pickContextFiles();
           await this.postState();
           return;
@@ -235,6 +243,13 @@ export class ChatPanel {
           this.messages = [];
           this.postMessages();
           await this.postState();
+          return;
+        case 'clearConversation':
+          if (this.messages.length > 0) {
+            this.messages = [];
+            this.postMessages();
+            vscode.window.showInformationMessage('Conversation cleared.');
+          }
           return;
         case 'editMessage':
           if (typeof message.index === 'number') {
@@ -267,6 +282,8 @@ export class ChatPanel {
     this.panel.webview.postMessage({ type: 'busy', value: true });
 
     try {
+      this.vibeMessages.push(this.createMessage('assistant', 'Running Vibe inside the extension...', { source: 'vibe' }));
+      this.postMessages();
       const output = await runVibe(args, undefined, env);
       const elapsedMs = Date.now() - startedAt;
       this.vibeMessages.push(this.createMessage('assistant', output || '(no output)', {
@@ -302,7 +319,8 @@ export class ChatPanel {
     if (command === 'context') {
       if (isContextMode(value)) {
         this.contextMode = value;
-        await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', value, vscode.ConfigurationTarget.Workspace);
+        const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+        await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', value, target);
       }
       await this.addLocalAssistantMessage(`Context mode: \`${this.contextMode}\`\n\nAvailable modes: none, selection, currentFile, openEditors, workspace, selectedFiles.`);
       await this.postState();
@@ -416,17 +434,20 @@ export class ChatPanel {
 
   private async pickContextFiles(): Promise<void> {
     const uris = await vscode.window.showOpenDialog({
-      title: 'Select Mistral Context Files',
+      title: 'Select Context Files',
       canSelectFiles: true,
       canSelectFolders: false,
       canSelectMany: true,
-      defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri
+      defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+      openLabel: 'Select Files from Workspace'
     });
 
     if (uris) {
       this.selectedContextFiles = uris.map(uri => uri.fsPath);
       this.contextMode = 'selectedFiles';
-      await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', 'selectedFiles', vscode.ConfigurationTarget.Workspace);
+      const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+      await vscode.workspace.getConfiguration('mistralVibe').update('contextMode', 'selectedFiles', target);
+      vscode.window.showInformationMessage(`Selected ${uris.length} context file${uris.length === 1 ? '' : 's'}.`);
     }
   }
 
@@ -527,7 +548,7 @@ export class ChatPanel {
     return {
       activeTab: this.activeTab,
       workspaceTrusted: vscode.workspace.isTrusted,
-      model: getModel(),
+      model: this.selectedModel,
       models,
       mistralKeys,
       vibeKeys,
@@ -603,13 +624,17 @@ export class ChatPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
-      --mistral-black: #1c1c1b;
-      --mistral-yellow: #ffce00;
-      --mistral-amber: #ffa300;
-      --mistral-orange: #ff7000;
-      --mistral-flame: #ff4900;
-      --mistral-red: #ff0107;
-      --mistral-cream: #fff7df;
+      /* Official Mistral AI brand colors - https://mistral.ai/brand */
+      --mistral-black: #000000;
+      --mistral-black-tinted: #1e1e1e;
+      --mistral-red: #e10500;
+      --mistral-orange-dark: #fa500f;
+      --mistral-orange: #ff8205;
+      --mistral-orange-light: #ffaf00;
+      --mistral-yellow: #ffd800;
+      --mistral-cream: #fffef7;
+      --mistral-flame: #fa500f;
+      --mistral-amber: #ffaf00;
     }
     * { box-sizing: border-box; }
     body {
@@ -726,12 +751,12 @@ export class ChatPanel {
       align-items: center;
       justify-content: center;
       border-radius: 6px;
-      background: transparent;
-      border: 1px solid transparent;
+      background: color-mix(in srgb, var(--vscode-button-background) 75%, var(--vscode-editor-background));
+      border: 1px solid color-mix(in srgb, var(--vscode-button-border, transparent) 70%, var(--vscode-panel-border));
       color: var(--vscode-foreground);
       cursor: pointer;
     }
-    .iconBtn svg { width: 16px; height: 16px; display: block; }
+    .iconBtn svg { width: 16px; height: 16px; display: block; fill: currentColor; }
     .iconBtn:hover { background: var(--mistral-flame); color: var(--mistral-cream); border-color: var(--mistral-flame); }
     .iconBtn.secondary { opacity: 0.9; }
     form {
@@ -796,6 +821,7 @@ export class ChatPanel {
         case 'gear': return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.4 13c.04-.33.06-.66.06-1s-.02-.67-.06-1l2.11-1.65a.5.5 0 00.12-.64l-2-3.46a.5.5 0 00-.6-.22l-2.49 1a7.03 7.03 0 00-1.7-.99l-.38-2.65A.5.5 0 0012 2h-4a.5.5 0 00-.5.42L7.12 5.07c-.6.23-1.16.54-1.66.92l-2.49-1a.5.5 0 00-.6.22l-2 3.46a.5.5 0 00.12.64L4.2 11c-.04.33-.06.66-.06 1s.02.67.06 1L1.9 14.65a.5.5 0 00-.12.64l2 3.46c.14.24.43.34.68.22l2.49-1c.5.38 1.06.69 1.66.92l.38 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.38-2.65c.6-.23 1.16-.54 1.7-.99l2.49 1c.25.12.54.02.68-.22l2-3.46a.5.5 0 00-.12-.64L19.4 13zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z"/></svg>';
         case 'check': return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l12-12-1.5-1.5z"/></svg>';
         case 'clipboard': return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 2H8a2 2 0 00-2 2v1H4v16a2 2 0 002 2h12a2 2 0 002-2V5h-2V4a2 2 0 00-2-2zM9 4h6v2H9V4z"/></svg>';
+        case 'trash': return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
         default: return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>';
       }
     }
@@ -836,6 +862,7 @@ export class ChatPanel {
         const value = document.getElementById('vibeCommand').value.trim();
         if (value) vscode.postMessage({ type: 'runVibeInline', value });
       }
+      if (action === 'clearConversation') vscode.postMessage({ type: 'clearConversation' });
     });
 
     content.addEventListener('change', event => {
@@ -876,7 +903,7 @@ export class ChatPanel {
       content.innerHTML = state.activeTab === 'chat' ? renderChat() : renderVibe();
     }
 
-    function renderChat() {
+        selectControl('modelSelect', 'Model', state.models.filter(isTextModelName), state.model),
       const setup = state.mistralKeys.length === 0 ? setupCard(
         'First-time Chat setup',
         'Add a regular Mistral API key, then choose a model. Direct chat uses the Mistral REST API.',
@@ -887,7 +914,7 @@ export class ChatPanel {
         selectControl('modelSelect', 'Model', state.models, state.model),
         keySelect('mistralKeySelect', 'Mistral API Key', state.mistralKeys, state.activeMistralKeyId),
         contextControls(),
-        '<div class="buttonRow">' + iconButton('addMistralKey','Add Key','key') + iconButton('newChat','New Chat','plus') + '</div>'
+        '<div class="buttonRow">' + iconButton('addMistralKey','Add Key','key') + iconButton('newChat','New Chat','plus') + iconButton('clearConversation','Clear','trash') + '</div>'
       ]) + historyList() + systemPromptEditor() + suggestionsInfo() + '<div class="messages">' + messages.map(renderMessage).join('') + '</div>';
     }
 
@@ -895,13 +922,13 @@ export class ChatPanel {
       const setup = state.vibeKeys.length === 0 ? setupCard(
         'First-time Vibe setup',
         'Add a Vibe/Codestral key and install the Vibe CLI. Commands run inside the extension host and output renders here.',
-        '<button data-action="addVibeKey">Add Vibe API Key</button><button class="secondary" data-action="installVibe">Install Vibe</button>'
+        iconButton('addVibeKey', 'Add Vibe API Key', 'key') + iconButton('installVibe', 'Install Vibe', 'cloud')
       ) : '';
-      const shell = state.bashPath ? escapeHtml(state.bashPath) : 'No Bash/Git Bash found; configure mistralVibe.vibeShellPath.';
+      const shell = state.bashPath ? escapeHtml(state.bashPath) : 'No Bash/Git Bash found; configure mistralVibe.vibeShellPath if you still want terminal-based runs.';
       return setup + toolbar([
         keySelect('vibeKeySelect', 'Vibe API Key', state.vibeKeys, state.activeVibeKeyId),
         '<label>Bash / Git Bash<span class="muted">' + shell + '</span></label>',
-        '<div class="buttonRow"><button data-action="addVibeKey">Add Key</button><button class="secondary" data-action="configureShell">Configure Shell</button><button class="secondary" data-action="installVibe">Install</button></div>'
+        '<div class="buttonRow">' + iconButton('addVibeKey', 'Add Key', 'key') + iconButton('configureShell', 'Configure Shell', 'gear') + iconButton('installVibe', 'Install', 'cloud') + '</div>'
       ]) + '<section class="section"><h2>Run Vibe command</h2><p class="muted">Enter arguments after <code>vibe</code>. Examples: <code>--help</code>, <code>--setup</code>, <code>ask "explain this repo"</code>.</p><label>Command<textarea id="vibeCommand" placeholder="--help"></textarea></label><div class="buttonRow"><button data-action="runVibe">Run Inside Extension</button></div></section><div class="messages">' + messages.map(renderMessage).join('') + '</div>';
     }
 
@@ -927,7 +954,7 @@ export class ChatPanel {
     function contextControls() {
       const modes = ['none', 'selection', 'currentFile', 'openEditors', 'workspace', 'selectedFiles'];
       const selected = state.selectedContextFiles.length ? '<span class="muted">' + escapeHtml(state.selectedContextFiles.join(', ')) + '</span>' : '<span class="muted">No files selected</span>';
-      return '<label>Context<select id="contextMode">' + modes.map(mode => '<option value="' + mode + '"' + (mode === state.contextMode ? ' selected' : '') + '>' + mode + '</option>').join('') + '</select>' + selected + '</label><div class="buttonRow">' + iconButton('pickContextFiles','Select Files','plus') + '</div>';
+      return '<label>Context<select id="contextMode">' + modes.map(mode => '<option value="' + mode + '"' + (mode === state.contextMode ? ' selected' : '') + '>' + mode + '</option>').join('') + '</select>' + selected + '</label><div class="buttonRow">' + iconButton('pickContextFilesNative','Select Files','plus') + '</div>';
     }
 
     function historyList() {
@@ -1002,11 +1029,97 @@ export class ChatPanel {
         .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
         .replace(/\\*([^*]+)\\*/g, '<em>$1</em>')
         .replace(/\`([^\`]+)\`/g, '<code>$1</code>')
-        .replace(/^[-*] (.*)$/gm, '<li>$1</li>')
+
         .replace(/\\n\\n/g, '</p><p>')
         .replace(/^/, '<p>')
         .replace(/$/, '</p>');
     }
+
+    // Improved markdown renderer that properly handles lists
+    const originalMarkdown = markdown;
+    markdown = function(text) {
+      // Handle code blocks first (before escaping)
+      let result = text.replace(/\`\`\`([a-zA-Z0-9_./\\-]+)?\n?([\s\S]*?)\`\`\`/g, (match, language, code) => {
+        const className = language ? ' class="language-' + escapeAttr(language) + '"' : '';
+        return '<pre><code' + className + '>' + escapeHtml(code) + '</code></pre>';
+      });
+
+      // Handle blockquotes
+      result = result.replace(/^> (.*)$/gm, '<blockquote>' + escapeHtml('$1') + '</blockquote>');
+
+      // Handle headings
+      result = result.replace(/^### (.*)$/gm, '<h3>' + escapeHtml('$1') + '</h3>');
+      result = result.replace(/^## (.*)$/gm, '<h2>' + escapeHtml('$1') + '</h2>');
+      result = result.replace(/^# (.*)$/gm, '<h1>' + escapeHtml('$1') + '</h1>');
+
+      // Handle lists - convert to proper HTML lists
+      const lines = result.split('\n');
+      const processed: string[] = [];
+      let inUl = false;
+      let inOl = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const ulMatch = line.match(/^[-*] (.*)$/);
+        const olMatch = line.match(/^\d+\. (.*)$/);
+        
+        if (ulMatch) {
+          if (inOl) {
+            processed.push('</ol>');
+            inOl = false;
+          }
+          if (!inUl) {
+            processed.push('<ul>');
+            inUl = true;
+          }
+          processed.push('<li>' + escapeHtml(ulMatch[1]) + '</li>');
+        } else if (olMatch) {
+          if (inUl) {
+            processed.push('</ul>');
+            inUl = false;
+          }
+          if (!inOl) {
+            processed.push('<ol>');
+            inOl = true;
+          }
+          processed.push('<li>' + escapeHtml(olMatch[1]) + '</li>');
+        } else {
+          if (inUl) {
+            processed.push('</ul>');
+            inUl = false;
+          }
+          if (inOl) {
+            processed.push('</ol>');
+            inOl = false;
+          }
+          processed.push(line);
+        }
+      }
+      
+      if (inUl) processed.push('</ul>');
+      if (inOl) processed.push('</ol>');
+      
+      result = processed.join('\n');
+      
+      // Handle inline formatting
+      result = escapeHtml(result);
+      result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      result = result.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+
+      // Handle paragraphs - don't add p tags if already in block element
+      if (!result.match(/^<(pre|blockquote|h[1-3]|ul|ol|li)/)) {
+        result = '<p>' + result;
+      }
+      if (!result.match(/<(pre|blockquote|h[1-3]|ul|ol|li|\/ul|\/ol|\/p)>$/)) {
+        result = result + '</p>';
+      }
+      
+      // Fix double newlines in paragraphs
+      result = result.replace(/\n\n+/g, '</p><p>');
+      
+      return result;
+    };
 
     function stripMarkdown(value) {
       return value
@@ -1021,6 +1134,11 @@ export class ChatPanel {
 
     function escapeAttr(value) {
       return escapeHtml(value).replace(/\\n/g, '&#10;');
+    }
+
+    function isTextModelName(model) {
+      const normalized = String(model ?? '').toLowerCase();
+      return !['voxtral', 'pixtral', 'ocr', 'embed', 'embedding', 'transcribe', 'transcription', 'speech', 'audio', 'vision'].some(fragment => normalized.includes(fragment));
     }
   </script>
 </body>
@@ -1043,12 +1161,92 @@ export async function configureVibeShellPath(): Promise<void> {
   });
 
   if (value) {
-    await vscode.workspace.getConfiguration('mistralVibe').update('vibeShellPath', value, vscode.ConfigurationTarget.Global);
+    const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await vscode.workspace.getConfiguration('mistralVibe').update('vibeShellPath', value, target);
   }
 }
 
+/**
+ * More accurate token estimation based on Mistral's tokenizer behavior.
+ * Accounts for:
+ * - 1 token per ~4 characters (base estimate)
+ * - Special tokens for newlines, spaces, punctuation
+ * - Code/digit sequences are more compact
+ */
 function estimateTokens(value: string): number {
-  return Math.max(1, Math.ceil(value.length / 4));
+  if (!value || value.length === 0) {
+    return 0;
+  }
+  
+  // Remove leading/trailing whitespace
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return 1;
+  }
+  
+  // Count characters, with adjustments for different token types
+  let tokenCount = 0;
+  let i = 0;
+  
+  while (i < trimmed.length) {
+    const char = trimmed[i];
+    
+    // Handle whitespace (newlines count as 1 token, other whitespace is often free or cheap)
+    if (char === '\n') {
+      tokenCount += 1;
+      i++;
+      continue;
+    }
+    
+    if (char === ' ') {
+      // Spaces before punctuation or between words
+      tokenCount += 0.25;
+      i++;
+      continue;
+    }
+    
+    // Handle punctuation (each is ~1 token)
+    if (/[.,!?;:(){}[\]"'<>@#$%^&*+=\-/\\|~`]/.test(char)) {
+      tokenCount += 1;
+      i++;
+      continue;
+    }
+    
+    // Handle digits (sequences of digits are compact)
+    if (/(?:\d+|\.\d+|\d+\.\d+)/.test(trimmed.slice(i))) {
+      const digitMatch = trimmed.slice(i).match(/(?:\d+|\.\d+|\d+\.\d+)/);
+      if (digitMatch) {
+        // Numbers: ~1 token per 3-4 digits
+        tokenCount += Math.ceil(digitMatch[0].length / 3);
+        i += digitMatch[0].length;
+        continue;
+      }
+    }
+    
+    // Handle words/alphanumeric sequences
+    if (/[a-zA-Z]/.test(char)) {
+      const wordMatch = trimmed.slice(i).match(/[a-zA-Z0-9_]+/);
+      if (wordMatch) {
+        // Words: ~1 token per 3-4 characters
+        const word = wordMatch[0];
+        // Common short words are 1 token
+        if (word.length <= 3) {
+          tokenCount += 1;
+        } else {
+          tokenCount += Math.ceil(word.length / 3.5);
+        }
+        i += word.length;
+        continue;
+      }
+    }
+    
+    // Default: count as part of a token
+    tokenCount += 0.33;
+    i++;
+  }
+  
+  // Round up to nearest integer and ensure minimum of 1
+  return Math.max(1, Math.ceil(tokenCount));
 }
 
 function parseCommandLine(value: string): string[] {

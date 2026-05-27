@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getEndpoint, getModel } from './config';
+import { getEndpoint, getModel, isTextChatModelName } from './config';
 import { CredentialStore } from './credentials';
 import { ChatMessage, MistralChatResponse, MistralModel, MistralModelsResponse } from './types';
 
@@ -13,6 +13,14 @@ export class MistralClient {
   async chat(messages: ChatMessage[], model = getModel()): Promise<string> {
     const apiKey = await this.getApiKey();
 
+    // Mistral chat API expects message content as an array of content blocks
+    // [{ type: 'text', text: '...' }] rather than a raw string. Convert
+    // our internal ChatMessage shape to the API shape to avoid 422 errors.
+    const apiMessages = messages.map(m => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content
+    }));
+
     const response = await fetch(`${getEndpoint()}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -21,7 +29,7 @@ export class MistralClient {
       },
       body: JSON.stringify({
         model,
-        messages,
+        messages: apiMessages,
         temperature: 0.2
       })
     });
@@ -61,6 +69,7 @@ export class MistralClient {
     const models = await this.listModels();
     return models
       .filter(model => model.capabilities?.completion_chat !== false)
+      .filter(model => isTextChatModelName(model.id))
       .map(model => model.id)
       .sort((a, b) => a.localeCompare(b));
   }

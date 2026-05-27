@@ -1,7 +1,7 @@
 {
   "name": "vscode-mistral-vibe",
   "displayName": "Mistral Vibe",
-  "description": "Mistral AI and Vibe CLI workflows inside VS Code.",
+  "description": "UNOFFICIAL Mistral AI extension adding Mistral AI and Vibe CLI to VS Code.",
   "version": "0.1.0",
   "publisher": "coolmanyt",
   "license": "MIT",
@@ -42,11 +42,16 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "test": "node --test src/test/**/*.test.ts",
+    "test:watch": "node --watch --test src/test/**/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^10.4.0",
     "typescript": "^5.4.5"
   },
   "contributes": {
@@ -234,6 +239,32 @@
           "type": "string",
           "default": "devstral-2",
           "description": "Model used for inline code suggestions."
+        },
+        "mistralVibe.excludedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/{node_modules,.git,dist,out,build}/**",
+            "**/.env",
+            "**/.env.local",
+            "**/.env.*",
+            "**/*.log",
+            "**/*.lock",
+            "**/coverage/**",
+            "**/.vscode/**",
+            "**/.idea/**",
+            "**/.DS_Store"
+          ],
+          "description": "Glob patterns for files to exclude from workspace context. Always excludes .env.local for security."
+        },
+        "mistralVibe.maxFileSize": {
+          "type": "number",
+          "default": 32000,
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Maximum file size in bytes to include in context (larger files are skipped)."
         }
       }
     },

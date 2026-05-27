@@ -19,7 +19,7 @@ export function getAvailableModels(): string[] {
     'mistral-medium-latest',
     'mistral-large-latest',
     'codestral-latest'
-  ]);
+  ]).filter(isTextChatModelName);
 }
 
 export function getVibeExecutable(): string {
@@ -40,4 +40,41 @@ export function isCodeSuggestionsEnabled(): boolean {
 
 export function getCodeSuggestionModel(): string {
   return getConfig().get<string>('codeSuggestions.model', 'devstral-2');
+}
+
+export function getExcludedFiles(): string[] {
+  return getConfig().get<string[]>('excludedFiles', [
+    '**/{node_modules,.git,dist,out,build}/**',
+    '**/.env',
+    '**/.env.local',
+    '**/.env.*',
+    '**/*.log',
+    '**/*.lock',
+    '**/coverage/**',
+    '**/.vscode/**',
+    '**/.idea/**',
+    '**/.DS_Store'
+  ]);
+}
+
+export function getMaxFileSize(): number {
+  return getConfig().get<number>('maxFileSize', 32_000);
+}
+
+export function isTextChatModelName(model: string): boolean {
+  const normalized = model.toLowerCase();
+  const excludedFragments = [
+    'voxtral',
+    'pixtral',
+    'ocr',
+    'embed',
+    'embedding',
+    'transcribe',
+    'transcription',
+    'speech',
+    'audio',
+    'vision'
+  ];
+
+  return !excludedFragments.some(fragment => normalized.includes(fragment));
 }

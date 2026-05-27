@@ -1,6 +1,6 @@
 # vscode-mistral-vibe
 
-Version: Alpha 0.0.1
+*Version: Alpha 0.0.2*
 
 Not official. A cross-platform VS Code extension that brings Mistral AI and Vibe CLI workflows into the editor.
 

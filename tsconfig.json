@@ -12,9 +12,14 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "types": ["node", "vscode"]
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/test/**"
   ]
 }

@@ -404,7 +404,8 @@ async function selectModel(client: MistralClient) {
   if (!model) {
     return;
   }
-  await vscode.workspace.getConfiguration('mistralVibe').update('model', model, vscode.ConfigurationTarget.Global);
+  const target = vscode.workspace.workspaceFolders?.length ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+  await vscode.workspace.getConfiguration('mistralVibe').update('model', model, target);
 }
 
 async function validateConnection(client: MistralClient, status: vscode.StatusBarItem) {
@@ -470,7 +471,7 @@ function registerChatParticipant(context: vscode.ExtensionContext, client: Mistr
 
     return {
       metadata: {
-        model: getAvailableModels()[0]
+        model: getAvailableModels()[0] ?? 'mistral-small-latest'
       }
     };
   });
