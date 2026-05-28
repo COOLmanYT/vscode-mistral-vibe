@@ -1,6 +1,13 @@
 # vscode-mistral-vibe
 
-*Version: Alpha 0.0.2*
+> [!IMPORTANT]
+> This repo is now discontinued and unmaintained. Mistral AI recently created an official VS Code extension that covers the same use cases with better integration and support. Please use the official [Mistral AI extension](https://marketplace.visualstudio.com/items?itemName=mistralai.mistral-vibe-code). (or feel free to fork this!)
+
+
+> [!NOTE]
+> This repository was vide-coded.
+
+*Version: Alpha 0.0.2 - Discontinued*
 
 Not official. A cross-platform VS Code extension that brings Mistral AI and Vibe CLI workflows into the editor.
 
